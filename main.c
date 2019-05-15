@@ -7,15 +7,9 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
-#define BIND_IP_ADDR "127.0.0.1"
-#define BIND_PORT 8000
-#define MAX_RECV_LEN 1048576
-#define MAX_SEND_LEN 1048576
-#define MAX_PATH_LEN 1024
-#define MAX_HOST_LEN 1024
-#define MAX_CONN 20
-
-#define HTTP_STATUS_200 "200 HAHA"
+#include "config.h"
+#include "signals.h"
+#include "status_code.h"
 
 void parse_request(char* request, ssize_t req_len, char* path, ssize_t* path_len)
 {
@@ -29,7 +23,7 @@ void parse_request(char* request, ssize_t req_len, char* path, ssize_t* path_len
     while(s2 < req_len && req[s2] != ' ') s2++;
 
     memcpy(path, req + s1 + 1, (s2 - s1 - 1) * sizeof(char));
-    path[s2 - s1 - 1] = '\0';
+    path[s2 - s1 - 1] = 0;
     *path_len = (s2 - s1 - 1);
 }
 
@@ -53,7 +47,7 @@ void handle_clnt(int clnt_sock)
     char* response = (char*) malloc(MAX_SEND_LEN * sizeof(char)) ;
     sprintf(response,
         "HTTP/1.0 %s\r\nContent-Length: %zd\r\n\r\n%s",
-        HTTP_STATUS_200, path_len, path);
+        STATUS_200, path_len, path);
     size_t response_len = strlen(response);
 
     // 通过 clnt_sock 向客户端发送信息
@@ -70,26 +64,18 @@ void handle_clnt(int clnt_sock)
 }
 
 int main(){
-    // 创建套接字，参数说明：
-    //   AF_INET: 使用 IPv4
-    //   SOCK_STREAM: 面向连接的数据传输方式
-    //   IPPROTO_TCP: 使用 TCP 协议
+    register_signal_handlers();
+
+    fprintf(stderr, "Starting server...\n");
     int serv_sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 
-    // 将套接字和指定的 IP、端口绑定
-    //   用 0 填充 serv_addr （它是一个 sockaddr_in 结构体）
-    struct sockaddr_in serv_addr;
-    memset(&serv_addr, 0, sizeof(serv_addr));
-    //   设置 IPv4
-    //   设置 IP 地址
-    //   设置端口
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_addr.s_addr = inet_addr(BIND_IP_ADDR);
-    serv_addr.sin_port = htons(BIND_PORT);
-    //   绑定
+    struct sockaddr_in serv_addr = {
+        .sin_family = AF_INET,
+        .sin_addr.s_addr = inet_addr(BIND_IP_ADDR),
+        .sin_port = htons(BIND_PORT)
+    };
     bind(serv_sock, (struct sockaddr*)&serv_addr, sizeof(serv_addr));
 
-    // 使得 serv_sock 套接字进入监听状态，开始等待客户端发起请求
     listen(serv_sock, MAX_CONN);
 
     // 接收客户端请求，获得一个可以与客户端通信的新的生成的套接字 clnt_sock

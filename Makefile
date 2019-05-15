@@ -2,11 +2,13 @@ CC := gcc
 CFLAGS := -O2 -Wall -Wno-unused-result
 LDFLAGS :=
 
+OBJS := main.o signals.o
+
 .PHONY: all clean
 
 all: server
 
-server: server.o
+server: $(OBJS)
 	${CC} ${CFLAGS} -o $@ $^ ${LDFLAGS}
 
 %.o: %.c
