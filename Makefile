@@ -1,8 +1,10 @@
 CC := gcc
 CFLAGS := -O2 -Wall -Wno-unused-result -s
-LDFLAGS :=
+LDFLAGS := -lc -lm
 
-OBJS := main.o signals.o
+DATA_DIR := data
+DATA_OBJS :=
+OBJS := main.o util.o signals.o globals.o reqhandler.o $(DATA_OBJS)
 
 .PHONY: all clean
 
@@ -13,6 +15,12 @@ server: $(OBJS)
 
 %.o: %.c
 	${CC} ${CFLAGS} -c -o $@ $^
+
+${DATA_DIR}/%.o: ${DATA_DIR}/%.c
+	${CC} -c -o $@ $^
+
+${DATA_DIR}/%.c: ${DATA_DIR}/%
+	sh gen_data.sh $*
 
 clean:
 	rm -f server *.o

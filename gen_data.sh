@@ -17,6 +17,7 @@ while [ $# -ne 0 ]; do
   fi
 
   xxd -i "$file" > "$file".c
+  awk '/^unsigned/{print "extern", $1, $2, $3 ";"}' "$file".c > "$file".h
   shift
 done
 
