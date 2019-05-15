@@ -74,7 +74,6 @@ void handle_client(int client_sock)
                 STATUS_200, st.st_size);
         write(client_sock, response, strlen(response));
 
-        eprintf("Size: %zd bytes\n", st.st_size);
         off_t fs = st.st_size;
         int fd = open(path, O_RDONLY);
         while (fs >= MAX_SEND_LEN) {
