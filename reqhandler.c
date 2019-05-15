@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/mman.h>
 #include <fcntl.h>
 #include <errno.h>
 
@@ -77,18 +78,18 @@ void handle_client(int client_sock)
                 STATUS_200, st.st_size);
         write(client_sock, response, strlen(response));
 
-        off_t fs = st.st_size;
+        off_t fs = st.st_size, off = 0;
         int fd = open(path, O_RDONLY);
-        while (fs >= MAX_SEND_LEN) {
-            read(fd, response, MAX_SEND_LEN);
-            write(client_sock, response, MAX_SEND_LEN);
-            fs -= MAX_SEND_LEN;
+        void *mm = mmap(NULL, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+        while (fs - off >= MAX_SEND_LEN) {
+            write(client_sock, mm + off, MAX_SEND_LEN);
+            off += MAX_SEND_LEN;
         }
-        if (fs > 0) {
-            read(fd, response, fs);
-            write(client_sock, response, fs);
+        if (fs - off > 0) {
+            write(client_sock, mm + off, fs - off);
         }
         close(fd);
+        munmap(mm, st.st_size);
     }
     close(client_sock);
 
