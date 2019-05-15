@@ -78,16 +78,9 @@ void handle_client(int client_sock)
                 STATUS_200, st.st_size);
         write(client_sock, response, strlen(response));
 
-        off_t fs = st.st_size, off = 0;
         int fd = open(path, O_RDONLY);
         void *mm = mmap(NULL, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
-        while (fs - off >= MAX_SEND_LEN) {
-            write(client_sock, mm + off, MAX_SEND_LEN);
-            off += MAX_SEND_LEN;
-        }
-        if (fs - off > 0) {
-            write(client_sock, mm + off, fs - off);
-        }
+        write(client_sock, mm, st.st_size);
         close(fd);
         munmap(mm, st.st_size);
     }
