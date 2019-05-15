@@ -13,8 +13,8 @@ all: server
 server: $(OBJS)
 	${CC} ${CFLAGS} -o $@ $^ ${LDFLAGS}
 
-%.o: %.c
-	${CC} ${CFLAGS} -c -o $@ $^
+%.o: %.c config.h
+	${CC} ${CFLAGS} -c -o $@ $<
 
 ${DATA_DIR}/%.o: ${DATA_DIR}/%.c
 	${CC} -c -o $@ $^

@@ -41,9 +41,7 @@ void handle_client(int client_sock)
     strcat(path, req + 4);
     char *fullpath = realpath(path, NULL);
     size_t fullpath_len = strlen(fullpath);
-    if (fullpath_len > document_root_len)
-        fullpath_len = document_root_len;
-    if (strncmp(fullpath, document_root, fullpath_len) != 0) {
+    if (strncmp(fullpath, document_root, document_root_len) != 0) {
         // Something sneaky
         sprintf(response, "HTTP/1.0 " STATUS_403 "\r\nContent-Length: 0\r\n\r\n");
         write(client_sock, response, strlen(response));

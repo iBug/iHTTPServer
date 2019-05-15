@@ -12,6 +12,6 @@
 #define MAX_HOST_LEN 1024
 #define MAX_CONN 8
 
-#define DOCUMENT_ROOT "html"
+#define DOCUMENT_ROOT "."
 
 #endif
