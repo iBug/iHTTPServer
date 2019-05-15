@@ -18,13 +18,12 @@
 
 void handle_client(int client_sock)
 {
-    char* req = (char*) malloc(MAX_RECV_LEN * sizeof(char));
+    char* req = malloc(MAX_RECV_LEN * sizeof(char));
     ssize_t req_len = read(client_sock, req, MAX_RECV_LEN);
 
-    char* path = (char*) malloc(MAX_PATH_LEN * sizeof(char));
-    char* fullpath = (char*) malloc(MAX_PATH_LEN * sizeof(char));
+    char* path = malloc(MAX_PATH_LEN * sizeof(char));
 
-    char* response = (char*) malloc(MAX_SEND_LEN * sizeof(char)) ;
+    char* response = malloc(MAX_SEND_LEN * sizeof(char)) ;
 
     if (strncmp(req, "GET ", (size_t)4U)) {
         sprintf(response, "HTTP/1.0 " STATUS_501 "\r\nContent-Length: 0\r\n\r\n");
@@ -32,7 +31,6 @@ void handle_client(int client_sock)
         close(client_sock);
         free(req);
         free(path);
-        free(fullpath);
         free(response);
         return;
     }
@@ -41,7 +39,7 @@ void handle_client(int client_sock)
     *strchr(req + 4, ' ') = 0;
     strcpy(path, DOCUMENT_ROOT);
     strcat(path, req + 4);
-    realpath(path, fullpath);
+    char *fullpath = realpath(path, NULL);
     size_t fullpath_len = strlen(fullpath);
     if (fullpath_len > document_root_len)
         fullpath_len = document_root_len;
@@ -56,7 +54,6 @@ void handle_client(int client_sock)
         free(response);
         return;
     }
-    eprintf("OK\n");
 
     // stat(2) the file
     struct stat st;
