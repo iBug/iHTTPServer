@@ -39,7 +39,8 @@ void handle_client(int client_sock)
     *strchr(req + 4, ' ') = 0;
     strcpy(path, DOCUMENT_ROOT);
     strcat(path, req + 4);
-    char *fullpath = realpath(path, NULL);
+    /*
+    char* fullpath = realpath(path, NULL);
     size_t fullpath_len = strlen(fullpath);
     if (strncmp(fullpath, document_root, document_root_len) != 0) {
         // Something sneaky
@@ -52,6 +53,8 @@ void handle_client(int client_sock)
         free(response);
         return;
     }
+    free(fullpath);
+    */
 
     // stat(2) the file
     struct stat st;
@@ -91,6 +94,5 @@ void handle_client(int client_sock)
 
     free(req);
     free(path);
-    free(fullpath);
     free(response);
 }

@@ -27,6 +27,9 @@ int main(){
     server_sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
     if (server_sock == -1)
         errorexit("socket");
+    const unsigned opt = 1U;
+    if (setsockopt(server_sock, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)))
+        errorexit("setsockopt");
 
     struct sockaddr_in server_addr = {
         .sin_family = AF_INET,
@@ -47,6 +50,7 @@ int main(){
         int client_sock = accept(server_sock, (struct sockaddr*)&client_addr, &client_addr_size);
         pid_t pid = fork(); // Fork a child
         if (pid == 0) {
+            close(server_sock);
             handle_client(client_sock);
             _exit(0);
         }
