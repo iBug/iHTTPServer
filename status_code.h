@@ -10,5 +10,6 @@
 #define STATUS_403 "403 Forbidden"
 #define STATUS_404 "404 Not Found"
 #define STATUS_500 "500 Interal Server Error"
+#define STATUS_501 "501 Unsupported"
 
 #endif

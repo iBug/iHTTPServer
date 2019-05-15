@@ -5,48 +5,98 @@
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <arpa/inet.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <errno.h>
 
 #include "config.h"
 #include "globals.h"
+#include "util.h"
 #include "signals.h"
 #include "status_code.h"
 
-void parse_request(char* req, ssize_t req_len, char* path, ssize_t* path_len)
+void handle_client(int client_sock)
 {
-    // 一个粗糙的解析方法，可能有 BUG！
-    // 获取第一个空格(s1)和第二个空格(s2)之间的内容，为 PATH
-    ssize_t s1 = 0;
-    while(s1 < req_len && req[s1] != ' ') s1++;
-    ssize_t s2 = s1 + 1;
-    while(s2 < req_len && req[s2] != ' ') s2++;
-
-    memcpy(path, req + s1 + 1, (s2 - s1 - 1) * sizeof(char));
-    path[s2 - s1 - 1] = 0;
-    *path_len = (s2 - s1 - 1);
-}
-
-void handle_client(int clnt_sock)
-{
-    char* req_buf = (char*) malloc(MAX_RECV_LEN * sizeof(char));
-    ssize_t req_len = read(clnt_sock, req_buf, MAX_RECV_LEN);
+    char* req = (char*) malloc(MAX_RECV_LEN * sizeof(char));
+    ssize_t req_len = read(client_sock, req, MAX_RECV_LEN);
 
     char* path = (char*) malloc(MAX_PATH_LEN * sizeof(char));
-    ssize_t path_len;
-    parse_request(req_buf, req_len, path, &path_len);
+    char* fullpath = (char*) malloc(MAX_PATH_LEN * sizeof(char));
 
     char* response = (char*) malloc(MAX_SEND_LEN * sizeof(char)) ;
-    sprintf(response,
-        "HTTP/1.0 %s\r\nContent-Length: %zd\r\n\r\n%s",
-        STATUS_200, path_len, path);
-    size_t response_len = strlen(response);
 
-    write(clnt_sock, response, response_len);
-    close(clnt_sock);
+    if (strncmp(req, "GET ", (size_t)4U)) {
+        sprintf(response, "HTTP/1.0 " STATUS_501 "\r\nContent-Length: 0\r\n\r\n");
+        write(client_sock, response, strlen(response));
+        close(client_sock);
+        free(req);
+        free(path);
+        free(fullpath);
+        free(response);
+        return;
+    }
 
-    free(req_buf);
+    // Construct path
+    *strchr(req + 4, ' ') = 0;
+    strcpy(path, DOCUMENT_ROOT);
+    strcat(path, req + 4);
+    realpath(path, fullpath);
+    size_t fullpath_len = strlen(fullpath);
+    if (fullpath_len > document_root_len)
+        fullpath_len = document_root_len;
+    if (strncmp(fullpath, document_root, fullpath_len) != 0) {
+        // Something sneaky
+        sprintf(response, "HTTP/1.0 " STATUS_403 "\r\nContent-Length: 0\r\n\r\n");
+        write(client_sock, response, strlen(response));
+        close(client_sock);
+        free(req);
+        free(path);
+        free(fullpath);
+        free(response);
+        return;
+    }
+    eprintf("OK\n");
+
+    // stat(2) the file
+    struct stat st;
+    if (stat(path, &st) == -1) {
+        if (errno == ENOENT) {
+            sprintf(response, "HTTP/1.0 " STATUS_404 "\r\nContent-Length: 0\r\n\r\n");
+        } else {
+            sprintf(response, "HTTP/1.0 " STATUS_500 "\r\nContent-Length: 0\r\n\r\n");
+        }
+        write(client_sock, response, strlen(response));
+    } else if ((st.st_mode & S_IFMT) != S_IFREG && (st.st_mode & S_IFMT) != S_IFLNK) {
+        sprintf(response, "HTTP/1.0 " STATUS_403 "\r\nContent-Length: 0\r\n\r\n");
+        write(client_sock, response, strlen(response));
+    } else {
+        sprintf(response,
+                "HTTP/1.0 %s\r\n"
+                "Content-Length: %zd\r\n"
+                "\r\n",
+                // "Content-Type: application/octet-stream\r\n\r\n",
+                STATUS_200, st.st_size);
+        write(client_sock, response, strlen(response));
+
+        eprintf("Size: %zd bytes\n", st.st_size);
+        off_t fs = st.st_size;
+        int fd = open(path, O_RDONLY);
+        while (fs >= MAX_SEND_LEN) {
+            read(fd, response, MAX_SEND_LEN);
+            write(client_sock, response, MAX_SEND_LEN);
+            fs -= MAX_SEND_LEN;
+        }
+        if (fs > 0) {
+            read(fd, response, fs);
+            write(client_sock, response, fs);
+        }
+        close(fd);
+    }
+    close(client_sock);
+
+    free(req);
     free(path);
+    free(fullpath);
     free(response);
 }

@@ -1,5 +1,5 @@
 CC := gcc
-CFLAGS := -O2 -Wall -Wno-unused-result -s
+CFLAGS := -O2 -Wall -Wno-unused-result -Wno-unused-variable -s
 LDFLAGS := -lc -lm
 
 DATA_DIR := data

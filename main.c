@@ -19,6 +19,8 @@
 
 int main(){
     register_signal_handlers();
+    realpath(DOCUMENT_ROOT, document_root);
+    document_root_len = strlen(document_root);
 
     server_sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 
