@@ -10,7 +10,7 @@
 #define MAX_SEND_LEN 1048576
 #define MAX_PATH_LEN 1024
 #define MAX_HOST_LEN 1024
-#define MAX_CONN 8
+#define MAX_CONN 128
 
 #define DOCUMENT_ROOT "."
 

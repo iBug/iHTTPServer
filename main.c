@@ -25,14 +25,18 @@ int main(){
     document_root_len = strlen(document_root);
 
     server_sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    if (server_sock == -1)
+        errorexit("socket");
 
     struct sockaddr_in server_addr = {
         .sin_family = AF_INET,
         .sin_addr.s_addr = inet_addr(BIND_IP_ADDR),
         .sin_port = htons(BIND_PORT)
     };
-    bind(server_sock, (struct sockaddr*)&server_addr, sizeof(server_addr));
-    listen(server_sock, MAX_CONN);
+    if (bind(server_sock, (struct sockaddr*)&server_addr, sizeof(server_addr)) == -1)
+        errorexit("bind");
+    if (listen(server_sock, MAX_CONN) == -1)
+        errorexit("listen");
     eprintf("Listening on %s port %d...\n", BIND_IP_ADDR, BIND_PORT);
 
     struct sockaddr_in client_addr;
@@ -44,7 +48,7 @@ int main(){
         pid_t pid = fork(); // Fork a child
         if (pid == 0) {
             handle_client(client_sock);
-            return 0;
+            _exit(0);
         }
         close(client_sock);
     }
