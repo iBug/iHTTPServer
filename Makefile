@@ -1,5 +1,5 @@
 CC := gcc
-CFLAGS := -O2 -Wall -Wno-unused-result
+CFLAGS := -O2 -Wall -Wno-unused-result -s
 LDFLAGS :=
 
 OBJS := main.o signals.o

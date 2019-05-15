@@ -1,3 +1,6 @@
+// File: main.c
+// Author: iBug
+
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
