@@ -57,14 +57,23 @@ void handle_client(int client_sock)
     free(fullpath);
     */
 
-    // stat(2) the file
-    struct stat st;
-    if (stat(path, &st) == -1) {
+    // open(2) and stat(2) the file
+    int fd = open(path, O_RDONLY);
+    if (fd == -1) {
         if (errno == ENOENT) {
             sprintf(response, "HTTP/1.0 " STATUS_404 "\r\nContent-Length: 0\r\n\r\n");
         } else {
             sprintf(response, "HTTP/1.0 " STATUS_500 "\r\nContent-Length: 0\r\n\r\n");
         }
+        write(client_sock, response, strlen(response));
+        free(req);
+        free(path);
+        free(response);
+        return;
+    }
+    struct stat st;
+    if (fstat(fd, &st) == -1) {
+        sprintf(response, "HTTP/1.0 " STATUS_500 "\r\nContent-Length: 0\r\n\r\n");
         write(client_sock, response, strlen(response));
     } else if ((st.st_mode & S_IFMT) != S_IFREG && (st.st_mode & S_IFMT) != S_IFLNK) {
         sprintf(response, "HTTP/1.0 " STATUS_403 "\r\nContent-Length: 0\r\n\r\n");
@@ -78,12 +87,24 @@ void handle_client(int client_sock)
                 STATUS_200, st.st_size);
         write(client_sock, response, strlen(response));
 
-        int fd = open(path, O_RDONLY);
-        void *mm = mmap(NULL, st.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
-        write(client_sock, mm, st.st_size);
-        close(fd);
-        munmap(mm, st.st_size);
+        const ssize_t size = st.st_size;
+        void *mm;
+        off_t off = 0L;
+        while (size - off >= MAX_SEND_LEN) {
+            mm = mmap(NULL, MAX_SEND_LEN, PROT_READ, MAP_PRIVATE, fd, off);
+            write(client_sock, mm, MAX_SEND_LEN);
+            munmap(mm, MAX_SEND_LEN);
+            off += MAX_SEND_LEN;
+        }
+        if (size - off > 0) {
+            int s = size - off;
+            mm = mmap(NULL, s, PROT_READ, MAP_PRIVATE, fd, off);
+            write(client_sock, mm, s);
+            munmap(mm, s);
+            off += s;
+        }
     }
+    close(fd);
     close(client_sock);
 
     free(req);
