@@ -99,6 +99,15 @@ void handle_client(int client_sock)
         if (size - off > 0) {
             int s = size - off;
             mm = mmap(NULL, s, PROT_READ, MAP_PRIVATE, fd, off);
+            if (mm == (void*)-1) {
+                // Something snarky!
+                close(fd);
+                close(client_sock);
+                free(req);
+                free(path);
+                free(response);
+                exit(1);
+            }
             write(client_sock, mm, s);
             munmap(mm, s);
             off += s;
