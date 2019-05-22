@@ -20,11 +20,24 @@
 void handle_client(int client_sock)
 {
     char* req = malloc(MAX_RECV_LEN * sizeof(char));
-    ssize_t req_len = read(client_sock, req, MAX_RECV_LEN);
+    ssize_t req_len = 0;
 
     char* path = malloc(MAX_PATH_LEN * sizeof(char));
 
     char* response = malloc(MAX_SEND_LEN * sizeof(char)) ;
+
+    while (req_len < MAX_RECV_LEN) {
+        ssize_t read_len = read(client_sock, req + req_len, MAX_RECV_LEN - req_len);
+        req_len += read_len;
+        // Examine the content for the 2nd space
+        req[MAX_RECV_LEN - 1] = 0;
+        char* target = strchr(req + 4, ' ');
+        if (target != NULL) {
+            // Target found
+            *target = 0;
+            break;
+        }
+    }
 
     if (strncmp(req, "GET ", (size_t)4U)) {
         sprintf(response, "HTTP/1.0 " STATUS_501 "\r\nContent-Length: 0\r\n\r\n");
@@ -37,7 +50,6 @@ void handle_client(int client_sock)
     }
 
     // Construct path
-    *strchr(req + 4, ' ') = 0;
     strcpy(path, DOCUMENT_ROOT);
     strcat(path, req + 4);
     /*
