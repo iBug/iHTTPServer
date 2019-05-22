@@ -52,22 +52,6 @@ void handle_client(int client_sock)
     // Construct path
     strcpy(path, DOCUMENT_ROOT);
     strcat(path, req + 4);
-    /*
-    char* fullpath = realpath(path, NULL);
-    size_t fullpath_len = strlen(fullpath);
-    if (strncmp(fullpath, document_root, document_root_len) != 0) {
-        // Something sneaky
-        sprintf(response, "HTTP/1.0 " STATUS_403 "\r\nContent-Length: 0\r\n\r\n");
-        write(client_sock, response, strlen(response));
-        close(client_sock);
-        free(req);
-        free(path);
-        free(fullpath);
-        free(response);
-        return;
-    }
-    free(fullpath);
-    */
 
     // open(2) and stat(2) the file
     int fd = open(path, O_RDONLY);
@@ -92,11 +76,11 @@ void handle_client(int client_sock)
         write(client_sock, response, strlen(response));
     } else {
         sprintf(response,
-                "HTTP/1.0 %s\r\n"
+                "HTTP/1.0 " STATUS_200 "\r\n"
                 "Content-Length: %zd\r\n"
                 "\r\n",
                 // "Content-Type: application/octet-stream\r\n\r\n",
-                STATUS_200, st.st_size);
+                st.st_size);
         write(client_sock, response, strlen(response));
 
         const ssize_t size = st.st_size;
@@ -104,6 +88,8 @@ void handle_client(int client_sock)
         off_t off = 0L;
         while (size - off >= MAX_SEND_LEN) {
             mm = mmap(NULL, MAX_SEND_LEN, PROT_READ, MAP_PRIVATE, fd, off);
+            if (mm == (void*)-1)
+                goto END;
             write(client_sock, mm, MAX_SEND_LEN);
             munmap(mm, MAX_SEND_LEN);
             off += MAX_SEND_LEN;
@@ -111,20 +97,14 @@ void handle_client(int client_sock)
         if (size - off > 0) {
             int s = size - off;
             mm = mmap(NULL, s, PROT_READ, MAP_PRIVATE, fd, off);
-            if (mm == (void*)-1) {
-                // Something snarky!
-                close(fd);
-                close(client_sock);
-                free(req);
-                free(path);
-                free(response);
-                exit(1);
-            }
+            if (mm == (void*)-1)
+                goto END;
             write(client_sock, mm, s);
             munmap(mm, s);
             off += s;
         }
     }
+END:
     close(fd);
     close(client_sock);
 
